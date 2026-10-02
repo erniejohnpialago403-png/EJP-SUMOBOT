@@ -14,9 +14,8 @@ button:disabled,select:disabled,input:disabled{opacity:.4}
 #go{width:100%;padding:22px 0;margin-top:12px;border:0;color:#fff;font-size:22px;font-weight:800;letter-spacing:2px;background:#1fbf6a}
 label{display:block;margin:20px 0 6px;font-size:12px;color:#8b93a1;text-transform:uppercase;letter-spacing:1.5px}
 select,input{width:100%;box-sizing:border-box;padding:12px;background:#191c23;color:#e9ecf1}
-.row{display:flex;gap:8px}.row input{flex:1}
-.row button{padding:0 18px;background:#3b82f6;color:#fff;border:0}
 #lim,#msg{font-size:12px;color:#8b93a1;margin-top:6px}
+#lim{margin-top:10px}
 #msg{color:#f5a524;min-height:1em}
 </style></head><body><main>
 <h1>SUMOBOT</h1>
@@ -30,19 +29,18 @@ select,input{width:100%;box-sizing:border-box;padding:12px;background:#191c23;co
 <option value="m1">Spin Search</option>
 <option value="m2">Arc Search</option>
 <option value="m3">Sneaky Little Bastard</option>
+<option value="m4">Straight Ahead</option>
 </select>
-<label for="ring">Ring diameter (mm)</label>
-<div class="row"><input id="ring" type="number" inputmode="numeric" min="300" max="2500" step="10" disabled><button id="set" disabled>Set</button></div>
 <div id="lim"></div>
 </main><script>
 // Bluetooth Low Energy "Nordic UART Service" - same as in the robot code
 const NUS="6e400001-b5a3-f393-e0a9-e50e24dcca9e",RX="6e400002-b5a3-f393-e0a9-e50e24dcca9e",TX="6e400003-b5a3-f393-e0a9-e50e24dcca9e";
 const $=id=>document.getElementById(id),S=["STANDBY","ACTIVE","STARTING..."],C=["","on","wait"];
-let dev=null,rx=null,chain=Promise.resolve(),editing=false,wanted=false,retry=0,lastMsg=0;
+let dev=null,rx=null,chain=Promise.resolve(),wanted=false,retry=0,lastMsg=0;
 const enc=new TextEncoder(),dec=new TextDecoder();
 
 function ui(connected){
-  ["go","mode","ring","set"].forEach(i=>$(i).disabled=!connected);
+  ["go","mode"].forEach(i=>$(i).disabled=!connected);
   $("conn").style.display=connected?"none":"block";
   if(!connected){$("st").textContent="NOT CONNECTED";$("st").className="";}
 }
@@ -59,12 +57,11 @@ function send(c){
 
 function onData(e){
   const t=dec.decode(e.target.value).trim(); lastMsg=Date.now();
-  if(t[0]==="S"){const [st,m,ring]=t.slice(1).split(",").map(Number);
+  if(t[0]==="S"){const [st,m]=t.slice(1).split(",").map(Number);
     $("st").textContent=S[st]||"?";$("st").className=C[st]||"";
-    if(document.activeElement!==$("mode"))$("mode").value="m"+m;
-    if(!editing)$("ring").value=ring;}
+    if(document.activeElement!==$("mode"))$("mode").value="m"+m;}
   else if(t[0]==="L"){const l=t.slice(1).split(",");
-    $("lim").textContent="Attacks within: front "+l[0]+" mm, front-L/R "+l[1]+" mm, sides "+l[2]+" mm";}
+    $("lim").textContent="Attacks within "+l[0]+" mm (all 5 sensors)";}
 }
 
 async function link(){
@@ -97,9 +94,6 @@ async function lost(){
 $("conn").onclick=()=>{retry=0;connect();};
 $("go").onclick=()=>send("start");
 $("mode").onchange=e=>send(e.target.value);
-$("ring").onfocus=()=>editing=true;
-$("ring").onblur=()=>setTimeout(()=>editing=false,300);
-$("set").onclick=()=>{const v=+$("ring").value;if(v<300||v>2500){$("lim").textContent="Use 300 - 2500 mm";return}editing=false;$("ring").blur();send("ring "+v);};
 // no status for 4 s while connected -> show it
 setInterval(()=>{ if(rx&&Date.now()-lastMsg>4000){ $("st").textContent="NO DATA";$("st").className=""; send("?"); } },2000);
 ui(false);
